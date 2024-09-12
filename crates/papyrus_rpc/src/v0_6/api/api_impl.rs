@@ -23,7 +23,7 @@ use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader, StorageTxn};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce};
-use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
+use starknet_api::hash::GENESIS_HASH;
 use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
     EventContent,
@@ -40,6 +40,7 @@ use starknet_client::reader::objects::pending_data::{
 use starknet_client::reader::PendingData;
 use starknet_client::writer::{StarknetWriter, WriterClientError};
 use starknet_client::ClientError;
+use starknet_types_core::felt::Felt;
 use tokio::sync::RwLock;
 use tracing::{instrument, trace, warn};
 
@@ -282,7 +283,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         contract_address: ContractAddress,
         key: StorageKey,
         block_id: BlockId,
-    ) -> RpcResult<StarkFelt> {
+    ) -> RpcResult<Felt> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let maybe_pending_storage_diffs = if let BlockId::Tag(Tag::Pending) = block_id {
             Some(
@@ -312,7 +313,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         // we'll return an error instead.
         // Contract address 0x1 is a special address, it stores the block
         // hashes. Contracts are not deployed to this address.
-        if res == StarkFelt::default() && contract_address != *BLOCK_HASH_TABLE_ADDRESS {
+        if res == Felt::default() && contract_address != *BLOCK_HASH_TABLE_ADDRESS {
             // check if the contract exists
             txn.get_state_reader()
                 .map_err(internal_server_error)?
@@ -444,14 +445,17 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
             Ok(parent_block_number) => {
                 BlockHeader::from(get_block_header_by_number(&txn, parent_block_number)?).new_root
             }
-            Err(_) => GlobalRoot(StarkHash::try_from(GENESIS_HASH).map_err(internal_server_error)?),
+            Err(_) => GlobalRoot(Felt::try_from(GENESIS_HASH).map_err(internal_server_error)?),
         };
 
         // Get the block state diff.
-        let thin_state_diff = txn
+        let mut thin_state_diff = txn
             .get_state_diff(block_number)
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
+        // Remove empty storage diffs. Some blocks contain empty storage diffs that must be kept for
+        // the computation of state diff commitment.
+        thin_state_diff.storage_diffs.retain(|_k, v| !v.is_empty());
 
         Ok(StateUpdate::AcceptedStateUpdate(AcceptedStateUpdate {
             block_hash: header.block_hash,
@@ -875,7 +879,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    async fn call(&self, request: CallRequest, block_id: BlockId) -> RpcResult<Vec<StarkFelt>> {
+    async fn call(&self, request: CallRequest, block_id: BlockId) -> RpcResult<Vec<Felt>> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let maybe_pending_data = if let BlockId::Tag(Tag::Pending) = block_id {
             Some(client_pending_data_to_execution_pending_data(
@@ -1462,7 +1466,7 @@ async fn read_pending_data<Mode: TransactionKind>(
         None => (
             starknet_api::block::BlockHeader {
                 parent_hash: BlockHash(
-                    StarkHash::try_from(GENESIS_HASH).map_err(internal_server_error)?,
+                    Felt::try_from(GENESIS_HASH).map_err(internal_server_error)?,
                 ),
                 ..Default::default()
             },

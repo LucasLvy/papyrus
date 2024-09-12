@@ -10,13 +10,13 @@ pub mod network_manager;
 pub mod streamed_data;
 #[cfg(test)]
 mod test_utils;
-
 use std::collections::BTreeMap;
 use std::time::Duration;
 
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
-use starknet_api::block::BlockNumber;
+use serde::{Deserialize, Serialize};
+use starknet_api::block::{BlockHash, BlockNumber};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
@@ -25,21 +25,28 @@ pub enum Direction {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct BlockQuery {
-    pub start_block: BlockNumber,
+struct BlockQuery {
+    pub start_block: BlockHashOrNumber,
     pub direction: Direction,
     pub limit: u64,
     pub step: u64,
 }
 
-pub struct Config {
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum BlockHashOrNumber {
+    Hash(BlockHash),
+    Number(BlockNumber),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct NetworkConfig {
     pub listen_addresses: Vec<String>,
     pub session_timeout: Duration,
     pub idle_connection_timeout: Duration,
     pub header_buffer_size: usize,
 }
 
-impl SerializeConfig for Config {
+impl SerializeConfig for NetworkConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from_iter([
             ser_param(
@@ -57,7 +64,8 @@ impl SerializeConfig for Config {
             ser_param(
                 "idle_connection_timeout",
                 &self.idle_connection_timeout.as_secs(),
-                "Amount of time that a connection with no active sessions will stay alive.",
+                "Amount of time in seconds that a connection with no active sessions will stay \
+                 alive.",
                 ParamPrivacyInput::Public,
             ),
             ser_param(
@@ -70,7 +78,7 @@ impl SerializeConfig for Config {
     }
 }
 
-impl Default for Config {
+impl Default for NetworkConfig {
     fn default() -> Self {
         Self {
             listen_addresses: vec![

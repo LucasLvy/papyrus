@@ -11,10 +11,10 @@ use starknet_api::deprecated_contract_class::{
     FunctionAbiEntry,
     StructAbiEntry,
 };
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::EntryPoint;
 use starknet_api::transaction::{Fee, TransactionSignature};
 use starknet_client::writer::objects::transaction::DeprecatedContractClass;
+use starknet_types_core::felt::Felt;
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, get_rng, GetTestInstance};
 
 use super::super::state::{ContractClass, EntryPointByType};
@@ -61,7 +61,7 @@ auto_impl_get_test_instance! {
     }
     // TODO(yair): Move out the test instances of ContractClass and EntryPointByType.
     pub struct ContractClass {
-        pub sierra_program: Vec<StarkFelt>,
+        pub sierra_program: Vec<Felt>,
         pub contract_class_version: String,
         pub entry_points_by_type: EntryPointByType,
         pub abi: String,

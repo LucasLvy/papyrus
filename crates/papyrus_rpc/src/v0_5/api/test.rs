@@ -6,7 +6,7 @@ use std::ops::Index;
 
 use assert_matches::assert_matches;
 use async_trait::async_trait;
-use indexmap::IndexMap;
+use indexmap::{indexmap, IndexMap};
 use itertools::Itertools;
 use jsonrpsee::core::Error;
 use jsonrpsee::Methods;
@@ -42,7 +42,8 @@ use starknet_api::deprecated_contract_class::{
     FunctionAbiEntry,
     FunctionStateMutability,
 };
-use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
+use starknet_api::hash::GENESIS_HASH;
+use starknet_api::patricia_key;
 use starknet_api::state::{ContractClass as StarknetApiContractClass, StateDiff, StorageKey};
 use starknet_api::transaction::{
     Event as StarknetApiEvent,
@@ -56,7 +57,6 @@ use starknet_api::transaction::{
     TransactionOffsetInBlock,
     TransactionOutput as StarknetApiTransactionOutput,
 };
-use starknet_api::{patricia_key, stark_felt};
 use starknet_client::reader::objects::pending_data::{
     PendingBlock,
     PendingStateUpdate as ClientPendingStateUpdate,
@@ -85,6 +85,7 @@ use starknet_client::writer::objects::transaction::{
 };
 use starknet_client::writer::{MockStarknetWriter, WriterClientError, WriterClientResult};
 use starknet_client::ClientError;
+use starknet_types_core::felt::Felt;
 use test_utils::{
     auto_impl_get_test_instance,
     get_number_of_variants,
@@ -448,9 +449,10 @@ async fn get_block_transaction_count() {
     call_api_then_assert_and_validate_schema_for_err::<_, usize>(
         &module,
         method_name,
-        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
-            "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-        )))))],
+        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(
+            Felt::from_hex("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484")
+                .unwrap(),
+        ))))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
@@ -565,9 +567,10 @@ async fn get_block_w_full_transactions() {
     let err = module
         .call::<_, Block>(
             method_name,
-            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
-                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-            ))))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(
+                Felt::from_hex("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484")
+                    .unwrap(),
+            )))],
         )
         .await
         .unwrap_err();
@@ -733,9 +736,10 @@ async fn get_block_w_transaction_hashes() {
     call_api_then_assert_and_validate_schema_for_err::<_, Block>(
         &module,
         method_name,
-        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
-            "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-        )))))],
+        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(
+            Felt::from_hex("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484")
+                .unwrap(),
+        ))))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
@@ -824,7 +828,7 @@ async fn get_class() {
     >(None, None, None, Some(pending_classes.clone()), None);
     let parent_header = BlockHeader::default();
     let header = BlockHeader {
-        block_hash: BlockHash(stark_felt!("0x1")),
+        block_hash: BlockHash(Felt::ONE),
         block_number: BlockNumber(1),
         parent_hash: parent_header.block_hash,
         ..BlockHeader::default()
@@ -899,7 +903,7 @@ async fn get_class() {
         method_name,
         vec![
             Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))),
-            Box::new(ClassHash(stark_felt!("0x7"))),
+            Box::new(ClassHash(Felt::from_hex_unchecked("0x7"))),
         ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
@@ -951,10 +955,11 @@ async fn get_class() {
         &module,
         method_name,
         vec![
-            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
-                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-            ))))),
-            Box::new(ClassHash(stark_felt!("0x7"))),
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(
+                Felt::from_hex("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484")
+                    .unwrap(),
+            )))),
+            Box::new(ClassHash(Felt::from_hex_unchecked("0x7"))),
         ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
@@ -1077,7 +1082,7 @@ async fn get_transaction_status() {
     call_api_then_assert_and_validate_schema_for_err::<_, TransactionStatus>(
         &module,
         method_name,
-        vec![Box::new(TransactionHash(StarkHash::from(1_u8)))],
+        vec![Box::new(TransactionHash(Felt::from(1_u8)))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &TRANSACTION_HASH_NOT_FOUND.into(),
@@ -1201,7 +1206,7 @@ async fn get_transaction_receipt() {
     call_api_then_assert_and_validate_schema_for_err::<_, TransactionReceipt>(
         &module,
         method_name,
-        vec![Box::new(TransactionHash(StarkHash::from(1_u8)))],
+        vec![Box::new(TransactionHash(Felt::from(1_u8)))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &TRANSACTION_HASH_NOT_FOUND.into(),
@@ -1224,7 +1229,7 @@ async fn get_class_at() {
         );
     let parent_header = BlockHeader::default();
     let header = BlockHeader {
-        block_hash: BlockHash(stark_felt!("0x1")),
+        block_hash: BlockHash(Felt::ONE),
         block_number: BlockNumber(1),
         parent_hash: parent_header.block_hash,
         ..BlockHeader::default()
@@ -1232,7 +1237,7 @@ async fn get_class_at() {
     let mut diff = get_test_state_diff();
     // Add a deployed contract with Cairo 1 class.
     let new_class_hash = diff.declared_classes.get_index(0).unwrap().0;
-    diff.deployed_contracts.insert(ContractAddress(patricia_key!("0x2")), *new_class_hash);
+    diff.deployed_contracts.insert(ContractAddress(patricia_key!(0x2)), *new_class_hash);
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -1351,7 +1356,7 @@ async fn get_class_at() {
         method_name,
         vec![
             Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))),
-            Box::new(ContractAddress(patricia_key!("0x12"))),
+            Box::new(ContractAddress(patricia_key!(0x12))),
         ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
@@ -1377,9 +1382,10 @@ async fn get_class_at() {
         &module,
         method_name,
         vec![
-            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
-                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-            ))))),
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(
+                Felt::from_hex("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484")
+                    .unwrap(),
+            )))),
             Box::new(*address),
         ],
         &VERSION,
@@ -1520,7 +1526,7 @@ async fn get_class_hash_at() {
         method_name,
         vec![
             Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))),
-            Box::new(ContractAddress(patricia_key!("0x12"))),
+            Box::new(ContractAddress(patricia_key!(0x12))),
         ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
@@ -1533,9 +1539,10 @@ async fn get_class_hash_at() {
         &module,
         method_name,
         vec![
-            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
-                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-            ))))),
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(
+                Felt::from_hex("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484")
+                    .unwrap(),
+            )))),
             Box::new(*address),
         ],
         &VERSION,
@@ -1608,14 +1615,14 @@ async fn get_nonce() {
     assert_eq!(res, *expected_nonce);
 
     // Ask for nonce in pending block when it was changed in pending block.
-    let new_nonce = Nonce(StarkFelt::from(1234_u128));
+    let new_nonce = Nonce(Felt::from(1234_u128));
     pending_data.write().await.state_update.state_diff.nonces.insert(*address, new_nonce);
     let res =
         module.call::<_, Nonce>(method_name, (BlockId::Tag(Tag::Pending), *address)).await.unwrap();
     assert_eq!(res, new_nonce);
 
     // Ask for nonce in pending block where the contract is deployed in the pending block.
-    let new_pending_contract_address = ContractAddress(patricia_key!("0x1234"));
+    let new_pending_contract_address = ContractAddress(patricia_key!(0x1234));
     pending_data
         .write()
         .await
@@ -1642,7 +1649,7 @@ async fn get_nonce() {
     // Ask for nonce in pending block where the contract is deployed in the pending block, and the
     // pending block is not up to date.
     // Expected outcome: Failure due to contract not found.
-    call_api_then_assert_and_validate_schema_for_err::<_, StarkFelt>(
+    call_api_then_assert_and_validate_schema_for_err::<_, Felt>(
         &module,
         method_name,
         vec![Box::new(BlockId::Tag(Tag::Pending)), Box::new(new_pending_contract_address)],
@@ -1658,7 +1665,7 @@ async fn get_nonce() {
         method_name,
         vec![
             Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))),
-            Box::new(ContractAddress(patricia_key!("0x31"))),
+            Box::new(ContractAddress(patricia_key!(0x31))),
         ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
@@ -1671,9 +1678,10 @@ async fn get_nonce() {
         &module,
         method_name,
         vec![
-            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
-                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-            ))))),
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(
+                Felt::from_hex("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484")
+                    .unwrap(),
+            )))),
             Box::new(*address),
         ],
         &VERSION,
@@ -1734,7 +1742,7 @@ async fn get_storage_at() {
 
     // Get storage by block number.
     let res = module
-        .call::<_, StarkFelt>(
+        .call::<_, Felt>(
             method_name,
             (*address, *key, BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))),
         )
@@ -1744,7 +1752,7 @@ async fn get_storage_at() {
 
     // Ask for storage in pending block when contract's storage wasn't changed in pending block.
     let res = module
-        .call::<_, StarkFelt>(method_name, (*address, key, BlockId::Tag(Tag::Pending)))
+        .call::<_, Felt>(method_name, (*address, key, BlockId::Tag(Tag::Pending)))
         .await
         .unwrap();
     assert_eq!(res, *expected_value);
@@ -1760,14 +1768,14 @@ async fn get_storage_at() {
         .storage_diffs
         .insert(*address, vec![ClientStorageEntry { key: other_key, value: other_value }]);
     let res = module
-        .call::<_, StarkFelt>(method_name, (*address, key, BlockId::Tag(Tag::Pending)))
+        .call::<_, Felt>(method_name, (*address, key, BlockId::Tag(Tag::Pending)))
         .await
         .unwrap();
     assert_eq!(res, *expected_value);
 
     // Ask for storage in pending block when it was changed in pending block.
     let res = module
-        .call::<_, StarkFelt>(method_name, (*address, other_key, BlockId::Tag(Tag::Pending)))
+        .call::<_, Felt>(method_name, (*address, other_key, BlockId::Tag(Tag::Pending)))
         .await
         .unwrap();
     assert_eq!(res, other_value);
@@ -1781,7 +1789,7 @@ async fn get_storage_at() {
         .storage_diffs
         .insert(*address, vec![ClientStorageEntry { key: *key, value: other_value }]);
     let res = module
-        .call::<_, StarkFelt>(method_name, (*address, key, BlockId::Tag(Tag::Pending)))
+        .call::<_, Felt>(method_name, (*address, key, BlockId::Tag(Tag::Pending)))
         .await
         .unwrap();
     assert_eq!(res, other_value);
@@ -1789,15 +1797,15 @@ async fn get_storage_at() {
     // Ask for storage in pending block when the pending block is not up to date.
     pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
     let res = module
-        .call::<_, StarkFelt>(method_name, (*address, other_key, BlockId::Tag(Tag::Pending)))
+        .call::<_, Felt>(method_name, (*address, other_key, BlockId::Tag(Tag::Pending)))
         .await
         .unwrap();
-    assert_eq!(res, StarkFelt::default());
+    assert_eq!(res, Felt::default());
 
     // Ask for storage updated both in pending block and non-pending block when the pending block is
     // not up to date.
     let res = module
-        .call::<_, StarkFelt>(method_name, (*address, *key, BlockId::Tag(Tag::Pending)))
+        .call::<_, Felt>(method_name, (*address, *key, BlockId::Tag(Tag::Pending)))
         .await
         .unwrap();
     assert_eq!(res, *expected_value);
@@ -1805,16 +1813,16 @@ async fn get_storage_at() {
     // Ask for storage in pending block where the contract is deployed in the pending block, and the
     // pending block is not up to date.
     // Expected outcome: Failure due to contract not found.
-    let key = StorageKey(patricia_key!("0x1001"));
-    let contract_address = ContractAddress(patricia_key!("0x1234"));
+    let key = StorageKey(patricia_key!(0x1001));
+    let contract_address = ContractAddress(patricia_key!(0x1234));
     pending_data
         .write()
         .await
         .state_update
         .state_diff
         .storage_diffs
-        .insert(contract_address, vec![ClientStorageEntry { key, value: StarkFelt::default() }]);
-    call_api_then_assert_and_validate_schema_for_err::<_, StarkFelt>(
+        .insert(contract_address, vec![ClientStorageEntry { key, value: Felt::default() }]);
+    call_api_then_assert_and_validate_schema_for_err::<_, Felt>(
         &module,
         method_name,
         vec![Box::new(contract_address), Box::new(key), Box::new(BlockId::Tag(Tag::Pending))],
@@ -1826,7 +1834,7 @@ async fn get_storage_at() {
 
     // Ask for storage at address 0x1 - the block hash table contract address
     let res = module
-        .call::<_, StarkFelt>(
+        .call::<_, Felt>(
             "starknet_V0_5_getStorageAt",
             (
                 *BLOCK_HASH_TABLE_ADDRESS,
@@ -1836,14 +1844,14 @@ async fn get_storage_at() {
         )
         .await
         .unwrap();
-    assert_eq!(res, StarkFelt::default());
+    assert_eq!(res, Felt::default());
 
     // Ask for an invalid contract.
-    call_api_then_assert_and_validate_schema_for_err::<_, StarkFelt>(
+    call_api_then_assert_and_validate_schema_for_err::<_, Felt>(
         &module,
         method_name,
         vec![
-            Box::new(ContractAddress(patricia_key!("0x12"))),
+            Box::new(ContractAddress(patricia_key!(0x12))),
             Box::new(key),
             Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
         ],
@@ -1854,15 +1862,16 @@ async fn get_storage_at() {
     .await;
 
     // Ask for an invalid block hash.
-    call_api_then_assert_and_validate_schema_for_err::<_, StarkFelt>(
+    call_api_then_assert_and_validate_schema_for_err::<_, Felt>(
         &module,
         method_name,
         vec![
             Box::new(*address),
             Box::new(key),
-            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
-                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-            ))))),
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(
+                Felt::from_hex("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484")
+                    .unwrap(),
+            )))),
         ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
@@ -1872,7 +1881,7 @@ async fn get_storage_at() {
 
     // Ask for an invalid block number.
     let err = module
-        .call::<_, StarkFelt>(
+        .call::<_, Felt>(
             method_name,
             (*address, key, BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))),
         )
@@ -1884,7 +1893,7 @@ async fn get_storage_at() {
 fn generate_client_transaction_client_receipt_and_rpc_receipt(
     rng: &mut ChaCha8Rng,
 ) -> (ClientTransaction, ClientTransactionReceipt, PendingTransactionReceipt) {
-    let pending_transaction_hash = TransactionHash(StarkHash::from(rng.next_u64()));
+    let pending_transaction_hash = TransactionHash(Felt::from(rng.next_u64()));
     let mut client_transaction_receipt = ClientTransactionReceipt::get_test_instance(rng);
     client_transaction_receipt.transaction_hash = pending_transaction_hash;
     // Generating a transaction until we receive a transaction that can have pending output (i.e a
@@ -1954,7 +1963,7 @@ async fn get_transaction_by_hash() {
     let mut block = get_test_block(1, None, None, None);
     // Change the transaction hash from 0 to a random value, so that later on we can add a
     // transaction with 0 hash to the pending block.
-    block.body.transaction_hashes[0] = TransactionHash(StarkHash::from(random::<u64>()));
+    block.body.transaction_hashes[0] = TransactionHash(Felt::from(random::<u64>()));
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -2007,7 +2016,7 @@ async fn get_transaction_by_hash() {
     call_api_then_assert_and_validate_schema_for_err::<_, TransactionWithHash>(
         &module,
         method_name,
-        vec![Box::new(TransactionHash(StarkHash::from(1_u8)))],
+        vec![Box::new(TransactionHash(Felt::from(1_u8)))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &TRANSACTION_HASH_NOT_FOUND.into(),
@@ -2018,7 +2027,7 @@ async fn get_transaction_by_hash() {
 #[tokio::test]
 async fn get_transaction_by_hash_state_only() {
     let method_name = "starknet_V0_5_getTransactionByHash";
-    let params = [TransactionHash(StarkHash::from(1_u8))];
+    let params = [TransactionHash(Felt::from(1_u8))];
     let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerImpl>(
         None,
         None,
@@ -2128,9 +2137,10 @@ async fn get_transaction_by_block_id_and_index() {
         &module,
         method_name,
         vec![
-            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
-                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-            ))))),
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(
+                Felt::from_hex("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484")
+                    .unwrap(),
+            )))),
             Box::new(TransactionOffsetInBlock(0)),
         ],
         &VERSION,
@@ -2172,9 +2182,9 @@ async fn get_state_update() {
         JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let parent_header = BlockHeader::default();
-    let expected_pending_old_root = GlobalRoot(stark_felt!("0x1234"));
+    let expected_pending_old_root = GlobalRoot(Felt::from_hex_unchecked("0x1234"));
     let header = BlockHeader {
-        block_hash: BlockHash(stark_felt!("0x1")),
+        block_hash: BlockHash(Felt::ONE),
         block_number: BlockNumber(1),
         parent_hash: parent_header.block_hash,
         state_root: expected_pending_old_root,
@@ -2305,9 +2315,10 @@ async fn get_state_update() {
     call_api_then_assert_and_validate_schema_for_err::<_, StateUpdate>(
         &module,
         method_name,
-        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
-            "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-        )))))],
+        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(
+            Felt::from_hex("0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484")
+                .unwrap(),
+        ))))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
@@ -2323,6 +2334,49 @@ async fn get_state_update() {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
+}
+
+#[tokio::test]
+async fn get_state_update_with_empty_storage_diff() {
+    let method_name = "starknet_V0_5_getStateUpdate";
+    let pending_data = get_test_pending_data();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerImpl,
+    >(None, None, Some(pending_data.clone()), None, None);
+    let state_diff = starknet_api::state::StateDiff {
+        storage_diffs: indexmap!(ContractAddress::default() => indexmap![]),
+        ..Default::default()
+    };
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .update_starknet_version(&BlockNumber(0), &StarknetVersion::default())
+        .unwrap()
+        .append_header(BlockNumber(0), &BlockHeader::default())
+        .unwrap()
+        .append_state_diff(BlockNumber(0), state_diff, IndexMap::new())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    // The empty storage diff should be removed in the result.
+    let expected_state_diff =
+        ThinStateDiff::from(starknet_api::state::ThinStateDiff::from(StateDiff::default()));
+    let expected_update = StateUpdate::AcceptedStateUpdate(AcceptedStateUpdate {
+        state_diff: expected_state_diff.clone(),
+        ..Default::default()
+    });
+
+    // Get state update by block hash.
+    call_api_then_assert_and_validate_schema_for_result(
+        &module,
+        method_name,
+        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))))],
+        &VERSION,
+        SpecFile::StarknetApiOpenrpc,
+        &expected_update,
+    )
+    .await;
 }
 
 #[derive(Clone)]
@@ -2434,7 +2488,7 @@ async fn test_get_events(
     let mut rng = get_rng();
 
     let mut event_index_to_event = HashMap::<EventIndex, Event>::new();
-    let mut parent_hash = BlockHash(stark_felt!(GENESIS_HASH));
+    let mut parent_hash = BlockHash(Felt::from(GENESIS_HASH));
     let mut rw_txn = storage_writer.begin_rw_txn().unwrap();
     for (i, block_metadata) in block_metadatas.iter().enumerate() {
         let block_number = BlockNumber(i as u64);
@@ -2627,7 +2681,7 @@ async fn get_events_chunk_across_block_and_pending_block() {
 
 #[tokio::test]
 async fn get_events_address_filter() {
-    let address = ContractAddress(patricia_key!("0x22"));
+    let address = ContractAddress(patricia_key!(0x22));
     let blocks_metadata = vec![BlockMetadata(vec![vec![
         DEFAULT_EVENT_METADATA,
         EventMetadata { address: Some(address), keys: None },
@@ -2654,7 +2708,7 @@ async fn get_events_address_filter() {
 
 #[tokio::test]
 async fn get_events_pending_address_filter() {
-    let address = ContractAddress(patricia_key!("0x22"));
+    let address = ContractAddress(patricia_key!(0x22));
     // As a special edge case, the function get_events doesn't return events if there are no
     // accepted blocks, even if there is a pending block. Therefore, we need to have a block in the
     // storage.
@@ -2683,11 +2737,11 @@ async fn get_events_pending_address_filter() {
 }
 
 lazy_static! {
-    static ref KEY0_0: EventKey = EventKey(stark_felt!("0x00"));
-    static ref KEY0_1: EventKey = EventKey(stark_felt!("0x01"));
-    static ref KEY2_0: EventKey = EventKey(stark_felt!("0x20"));
-    static ref KEY2_1: EventKey = EventKey(stark_felt!("0x21"));
-    static ref UNRELATED_KEY: EventKey = EventKey(stark_felt!("0xff"));
+    static ref KEY0_0: EventKey = EventKey(Felt::ZERO);
+    static ref KEY0_1: EventKey = EventKey(Felt::ONE);
+    static ref KEY2_0: EventKey = EventKey(Felt::from_hex_unchecked("0x20"));
+    static ref KEY2_1: EventKey = EventKey(Felt::from_hex_unchecked("0x21"));
+    static ref UNRELATED_KEY: EventKey = EventKey(Felt::from_hex_unchecked("0xff"));
     static ref BLOCKS_METADATA_FOR_KEYS_FILTER_TEST: Vec<BlockMetadata> =
         // Adding an empty block at the start so that in the pending test there will be an accepted
         // block. See above for explanation on the special edge case of no accepted blocks.
@@ -2965,7 +3019,7 @@ async fn get_events_page_size_too_big() {
 async fn get_events_too_many_keys() {
     let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
     let keys = (0..get_test_rpc_config().max_events_keys + 1)
-        .map(|i| HashSet::from([EventKey(StarkFelt::from(i as u128))]))
+        .map(|i| HashSet::from([EventKey(Felt::from(i as u128))]))
         .collect();
 
     // Create the filter.
@@ -3039,7 +3093,7 @@ async fn serialize_returns_valid_json() {
     let block = starknet_api::block::Block {
         header: BlockHeader {
             parent_hash: parent_block.header.block_hash,
-            block_hash: BlockHash(stark_felt!("0x1")),
+            block_hash: BlockHash(Felt::ONE),
             block_number: BlockNumber(1),
             ..BlockHeader::default()
         },
@@ -3049,13 +3103,11 @@ async fn serialize_returns_valid_json() {
     // In the test instance both declared_classes and deprecated_declared_classes have an entry
     // with class hash 0x0, which is illegal.
     state_diff.deprecated_declared_classes = IndexMap::from([(
-        ClassHash(stark_felt!("0x2")),
+        ClassHash(Felt::TWO),
         starknet_api::deprecated_contract_class::ContractClass::get_test_instance(&mut rng),
     )]);
     // For checking the schema also for deprecated contract classes.
-    state_diff
-        .deployed_contracts
-        .insert(ContractAddress(patricia_key!("0x2")), ClassHash(stark_felt!("0x2")));
+    state_diff.deployed_contracts.insert(ContractAddress(patricia_key!(0x2)), ClassHash(Felt::TWO));
     // TODO(yair): handle replaced classes.
     state_diff.replaced_classes.clear();
     storage_writer
@@ -3125,7 +3177,8 @@ async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, sche
     let res = send_request(
         server_address,
         "starknet_getClassAt",
-        format!(r#"{{"block_number": 1}}, "0x{}""#, hex::encode(address.0.key().bytes())).as_str(),
+        format!(r#"{{"block_number": 1}}, "0x{}""#, hex::encode(address.0.to_felt().to_bytes_be()))
+            .as_str(),
         VERSION.name,
     )
     .await;
@@ -3137,7 +3190,8 @@ async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, sche
     let res = send_request(
         server_address,
         "starknet_getClassAt",
-        format!(r#"{{"block_number": 1}}, "0x{}""#, hex::encode(address.0.key().bytes())).as_str(),
+        format!(r#"{{"block_number": 1}}, "0x{}""#, hex::encode(address.0.to_felt().to_bytes_be()))
+            .as_str(),
         VERSION.name,
     )
     .await;
@@ -3157,7 +3211,8 @@ async fn validate_block(header: &BlockHeader, server_address: SocketAddr, schema
     let res = send_request(
         server_address,
         "starknet_getBlockWithTxHashes",
-        format!(r#"{{"block_hash": "0x{}"}}"#, hex::encode(header.block_hash.0.bytes())).as_str(),
+        format!(r#"{{"block_hash": "0x{}"}}"#, hex::encode(header.block_hash.0.to_bytes_be()))
+            .as_str(),
         VERSION.name,
     )
     .await;
@@ -3181,7 +3236,7 @@ async fn validate_transaction(
     let res = send_request(
         server_address,
         "starknet_getTransactionByHash",
-        format!(r#""0x{}""#, hex::encode(tx_hash.0.bytes())).as_str(),
+        format!(r#""0x{}""#, hex::encode(tx_hash.0.to_bytes_be())).as_str(),
         VERSION.name,
     )
     .await;
@@ -3190,7 +3245,7 @@ async fn validate_transaction(
     let res = send_request(
         server_address,
         "starknet_getTransactionReceipt",
-        format!(r#""0x{}""#, hex::encode(tx_hash.0.bytes())).as_str(),
+        format!(r#""0x{}""#, hex::encode(tx_hash.0.to_bytes_be())).as_str(),
         VERSION.name,
     )
     .await;
@@ -3231,8 +3286,8 @@ async fn get_deprecated_class_state_mutability() {
 
     let state_diff = StateDiff {
         deprecated_declared_classes: IndexMap::from([
-            (ClassHash(stark_felt!("0x0")), class_without_state_mutability),
-            (ClassHash(stark_felt!("0x1")), class_with_state_mutability),
+            (ClassHash(Felt::ZERO), class_without_state_mutability),
+            (ClassHash(Felt::ONE), class_with_state_mutability),
         ]),
         ..Default::default()
     };
@@ -3257,7 +3312,7 @@ async fn get_deprecated_class_state_mutability() {
             "starknet_V0_5_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
-                ClassHash(stark_felt!("0x0")),
+                ClassHash(Felt::ZERO),
             ),
         )
         .await
@@ -3272,7 +3327,7 @@ async fn get_deprecated_class_state_mutability() {
             "starknet_V0_5_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
-                ClassHash(stark_felt!("0x1")),
+                ClassHash(Felt::ONE),
             ),
         )
         .await

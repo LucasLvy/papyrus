@@ -34,7 +34,6 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockTimestamp, GasPrice};
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
 use starknet_api::deprecated_contract_class::EntryPointType;
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::ThinStateDiff;
 use starknet_api::transaction::{
     Builtin,
@@ -44,6 +43,7 @@ use starknet_api::transaction::{
     Fee,
     MessageToL1,
 };
+use starknet_types_core::felt::Felt;
 
 use crate::{ExecutionError, ExecutionResult};
 
@@ -344,7 +344,7 @@ impl From<BlockifierCallType> for CallType {
 
 /// The return data of a function call.
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-pub struct Retdata(pub Vec<StarkFelt>);
+pub struct Retdata(pub Vec<Felt>);
 
 impl From<BlockifierRetdata> for Retdata {
     fn from(retdata: BlockifierRetdata) -> Self {

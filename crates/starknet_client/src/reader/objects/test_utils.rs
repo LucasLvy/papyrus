@@ -8,7 +8,6 @@ use starknet_api::core::{
     EthAddress,
     Nonce,
 };
-use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{EntryPoint, EntryPointType};
 use starknet_api::transaction::{
     AccountDeploymentData,
@@ -27,6 +26,7 @@ use starknet_api::transaction::{
     TransactionSignature,
     TransactionVersion,
 };
+use starknet_types_core::felt::Felt;
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
 use super::transaction::Builtin;
@@ -122,7 +122,7 @@ auto_impl_get_test_instance! {
         pub calldata: Calldata,
     }
     pub struct ContractClass {
-        pub sierra_program: Vec<StarkFelt>,
+        pub sierra_program: Vec<Felt>,
         pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
         pub contract_class_version: String,
         pub abi: String,
@@ -144,7 +144,7 @@ auto_impl_get_test_instance! {
         pub payload: L1ToL2Payload,
         pub nonce: L1ToL2Nonce,
     }
-    pub struct L1ToL2Nonce(pub StarkHash);
+    pub struct L1ToL2Nonce(pub Felt);
     pub struct L2ToL1Message {
         pub from_address: ContractAddress,
         pub to_address: EthAddress,

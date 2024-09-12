@@ -26,7 +26,6 @@ use cairo_lang_starknet::casm_contract_class::{
     CasmContractEntryPoint,
     CasmContractEntryPoints,
 };
-use cairo_lang_starknet::NestedIntList;
 use cairo_lang_utils::bigint::BigUintAsHex;
 use indexmap::IndexMap;
 use num_bigint::BigUint;
@@ -72,8 +71,6 @@ use starknet_api::deprecated_contract_class::{
     StructMember,
     TypedParameter,
 };
-use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::stark_felt;
 use starknet_api::state::{
     ContractClass,
     EntryPoint,
@@ -130,6 +127,7 @@ use starknet_api::transaction::{
     TransactionSignature,
     TransactionVersion,
 };
+use starknet_types_core::felt::Felt;
 
 //////////////////////////////////////////////////////////////////////////
 // GENERIC TEST UTIL FUNCTIONS
@@ -267,7 +265,7 @@ fn get_rand_test_body_with_events(
         while is_v3_transaction(&transaction) {
             transaction = Transaction::get_test_instance(rng);
         }
-        transaction_hashes.push(TransactionHash(StarkHash::from(i as u128)));
+        transaction_hashes.push(TransactionHash(Felt::from(i)));
         let transaction_output = get_test_transaction_output(&transaction);
         transactions.push(transaction);
         transaction_outputs.push(transaction_output);
@@ -384,7 +382,7 @@ pub fn get_test_state_diff() -> StateDiff {
     // TODO(anatg): fix StateDiff::get_test_instance so the declared_classes will have different
     // hashes than the deprecated_contract_classes.
     let (_, data) = res.declared_classes.pop().unwrap();
-    res.declared_classes.insert(ClassHash(stark_felt!("0x001")), data);
+    res.declared_classes.insert(ClassHash(Felt::from_hex_unchecked("0x001")), data);
     // TODO(yair): Find a way to create replaced classes in a test instance of StateDiff.
     res.replaced_classes.clear();
     res
@@ -399,8 +397,8 @@ pub trait GetTestInstance: Sized {
 }
 
 auto_impl_get_test_instance! {
-    pub struct AccountDeploymentData(pub Vec<StarkFelt>);
-    pub struct BlockHash(pub StarkHash);
+    pub struct AccountDeploymentData(pub Vec<Felt>);
+    pub struct BlockHash(pub Felt);
     pub struct BlockHeader {
         pub block_hash: BlockHash,
         pub parent_hash: BlockHash,
@@ -430,13 +428,13 @@ auto_impl_get_test_instance! {
         Keccak = 6,
         SegmentArena = 7,
     }
-    pub struct Calldata(pub Arc<Vec<StarkFelt>>);
-    pub struct ClassHash(pub StarkHash);
-    pub struct CompiledClassHash(pub StarkHash);
-    pub struct ContractAddressSalt(pub StarkHash);
+    pub struct Calldata(pub Arc<Vec<Felt>>);
+    pub struct ClassHash(pub Felt);
+    pub struct CompiledClassHash(pub Felt);
+    pub struct ContractAddressSalt(pub Felt);
     pub struct ContractClass {
-        pub sierra_program: Vec<StarkFelt>,
-        pub entry_point_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+        pub sierra_program: Vec<Felt>,
+        pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
         pub abi: String,
     }
     pub struct DeprecatedContractClass {
@@ -538,7 +536,7 @@ auto_impl_get_test_instance! {
     }
     pub struct FunctionIndex(pub usize);
     pub struct EntryPointOffset(pub usize);
-    pub struct EntryPointSelector(pub StarkHash);
+    pub struct EntryPointSelector(pub Felt);
     pub enum EntryPointType {
         Constructor = 0,
         External = 1,
@@ -553,9 +551,9 @@ auto_impl_get_test_instance! {
         pub keys: Vec<EventKey>,
         pub data: EventData,
     }
-    pub struct EventData(pub Vec<StarkFelt>);
+    pub struct EventData(pub Vec<Felt>);
     pub struct EventIndexInTransactionOutput(pub usize);
-    pub struct EventKey(pub StarkFelt);
+    pub struct EventKey(pub Felt);
     pub struct Fee(pub u128);
     pub struct FunctionAbiEntry {
         pub name: String,
@@ -567,7 +565,7 @@ auto_impl_get_test_instance! {
         View = 0,
     }
     pub struct GasPrice(pub u128);
-    pub struct GlobalRoot(pub StarkHash);
+    pub struct GlobalRoot(pub Felt);
     pub enum InvokeTransaction {
         V0(InvokeTransactionV0) = 0,
         V1(InvokeTransactionV1) = 1,
@@ -606,8 +604,8 @@ auto_impl_get_test_instance! {
         pub entry_point_selector: EntryPointSelector,
         pub calldata: Calldata,
     }
-    pub struct L1ToL2Payload(pub Vec<StarkFelt>);
-    pub struct L2ToL1Payload(pub Vec<StarkFelt>);
+    pub struct L1ToL2Payload(pub Vec<Felt>);
+    pub struct L2ToL1Payload(pub Vec<Felt>);
     pub struct MessageToL1 {
         pub to_address: EthAddress,
         pub payload: L2ToL1Payload,
@@ -617,8 +615,8 @@ auto_impl_get_test_instance! {
         pub from_address: EthAddress,
         pub payload: L1ToL2Payload,
     }
-    pub struct Nonce(pub StarkFelt);
-    pub struct PaymasterData(pub Vec<StarkFelt>);
+    pub struct Nonce(pub Felt);
+    pub struct PaymasterData(pub Vec<Felt>);
     pub struct Program {
         pub attributes: serde_json::Value,
         pub builtins: serde_json::Value,
@@ -641,12 +639,12 @@ auto_impl_get_test_instance! {
     }
     pub struct ResourceBoundsMapping(pub BTreeMap<Resource, ResourceBounds>);
         pub struct Signature {
-        pub r: StarkFelt,
-        pub s: StarkFelt,
+        pub r: Felt,
+        pub s: Felt,
     }
     pub struct StateDiff {
         pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
-        pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+        pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, Felt>>,
         pub declared_classes: IndexMap<ClassHash, (CompiledClassHash, ContractClass)>,
         pub deprecated_declared_classes: IndexMap<ClassHash, DeprecatedContractClass>,
         pub nonces: IndexMap<ContractAddress, Nonce>,
@@ -658,7 +656,7 @@ auto_impl_get_test_instance! {
     }
     pub struct ThinStateDiff {
         pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
-        pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+        pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, Felt>>,
         pub declared_classes: IndexMap<ClassHash, CompiledClassHash>,
         pub deprecated_declared_classes: Vec<ClassHash>,
         pub nonces: IndexMap<ContractAddress, Nonce>,
@@ -676,10 +674,10 @@ auto_impl_get_test_instance! {
         Succeeded = 0,
         Reverted = 1,
     }
-    pub struct TransactionHash(pub StarkHash);
+    pub struct TransactionHash(pub Felt);
     pub struct TransactionOffsetInBlock(pub usize);
-    pub struct TransactionSignature(pub Vec<StarkFelt>);
-    pub struct TransactionVersion(pub StarkFelt);
+    pub struct TransactionSignature(pub Vec<Felt>);
+    pub struct TransactionVersion(pub Felt);
     pub struct TypedParameter {
         pub name: String,
         pub r#type: String,
@@ -689,7 +687,6 @@ auto_impl_get_test_instance! {
         pub prime: BigUint,
         pub compiler_version: String,
         pub bytecode: Vec<BigUintAsHex>,
-        pub bytecode_segment_lengths: Option<NestedIntList>,
         pub hints: Vec<(usize, Vec<Hint>)>,
         pub pythonic_hints: Option<Vec<(usize, Vec<String>)>>,
         pub entry_points_by_type: CasmContractEntryPoints,
@@ -709,10 +706,6 @@ auto_impl_get_test_instance! {
 
     pub struct BigUintAsHex {
         pub value: BigUint,
-    }
-    pub enum NestedIntList {
-        Leaf(usize) = 0,
-        Node(Vec<NestedIntList>) = 1,
     }
 
     binary(bool);
@@ -896,7 +889,7 @@ macro_rules! get_number_of_variants {
 ////////////////////////////////////////////////////////////////////////
 default_impl_get_test_instance!(H160);
 default_impl_get_test_instance!(ContractAddress);
-default_impl_get_test_instance!(StarkHash);
+default_impl_get_test_instance!(Felt);
 default_impl_get_test_instance!(StorageKey);
 default_impl_get_test_instance!(BigUint);
 
